@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Attendance Briefing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --ink:#141c26; --sub:#5c6570; --line:#e2e5ea;
+  --brand:#1c3a5e; --brand2:#0f2339; --gold:#c9a24a; --gold-dark:#8a6a24; --chip:#eef1f6;
+  --good:#1f7a4d; --good-bg:#e5f4ea; --warn:#a85c00; --warn-bg:#fbedd8; --bad:#b3261e; --bad-bg:#fbe4e2;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif; --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1513;--card:#161f1c;--ink:#eef2f0;--sub:#9db0aa;--line:#28332f;--chip:#1c2622;--good-bg:#0f2a1c;--warn-bg:#2e230f;--bad-bg:#2e1513;}}
+:root[data-theme="dark"]{--bg:#0e1513;--card:#161f1c;--ink:#eef2f0;--sub:#9db0aa;--line:#28332f;--chip:#1c2622;--good-bg:#0f2a1c;--warn-bg:#2e230f;--bad-bg:#2e1513;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+header{position:sticky;top:0;z-index:6;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 16px;background:var(--brand2);color:#fff;border-bottom:3px solid var(--gold);}
+header .htop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:1180px;margin:0 auto;}
+.logo-mark{height:38px;width:auto;flex-shrink:0;fill:#fff;}
+header .titleblock{display:flex;flex-direction:column;}
+header .instname{font-size:.72rem;letter-spacing:.4px;color:var(--gold);font-weight:600;}
+header h1{margin:0;font-family:var(--serif);font-weight:600;font-size:1.3rem;letter-spacing:.2px;line-height:1.15;}
+header p{margin:2px 0 0;font-size:.82rem;opacity:.85;max-width:1180px;margin-left:auto;margin-right:auto;}
+.print-header{display:none;}
+@media print{
+  .print-header{display:flex !important;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #162e4d;}
+  .print-header .logo-mark{height:44px;fill:#162e4d;}
+  .print-header .instname{color:#162e4d;font-size:.85rem;font-weight:700;}
+  .print-header h1{margin:0;font-family:var(--serif);font-size:1.2rem;color:#162e4d;}
+}
+.wrap{max-width:1180px;margin:0 auto;padding:18px;}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.toolbar label.fileBtn{background:var(--brand);color:#fff;padding:9px 16px;border-radius:7px;cursor:pointer;font-size:.85rem;font-weight:600;}
+.toolbar label.fileBtn.disabled{background:var(--sub);cursor:not-allowed;}
+.toolbar input[type=file]{display:none;}
+select,button.ghost,textarea,input.txt,input.search{padding:8px 10px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:.85rem;font-family:inherit;}
+button.ghost{cursor:pointer;font-weight:600;}
+button.primary{background:var(--brand);color:#fff;border:none;padding:9px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:.85rem;}
+button.primary:disabled,button.ghost:disabled{opacity:.45;cursor:not-allowed;}
+button.small{padding:6px 10px;font-size:.78rem;}
+.spacer{flex:1;}
+#status{font-size:.8rem;color:var(--sub);}
+.badge{font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;margin-bottom:10px;}
+.badge.synced{background:var(--good-bg);color:var(--good);}
+.badge.readonly{background:var(--warn-bg);color:var(--warn);}
+.badge.local{background:var(--chip);color:var(--sub);}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;}
+.kpi .v{font-family:var(--serif);font-size:1.9rem;font-weight:600;}
+.kpi .l{font-size:.74rem;color:var(--sub);margin-top:2px;}
+.hero{background:var(--brand2);color:#fff;border-radius:12px;padding:22px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:26px;align-items:center;}
+.hero .big{font-family:var(--serif);font-size:3rem;font-weight:600;line-height:1;}
+.hero .sub{font-size:.82rem;opacity:.85;margin-top:4px;}
+.hero .col{min-width:130px;}
+.hero .donutwrap{margin-left:auto;}
+.grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+@media(max-width:760px){.grid{grid-template-columns:1fr;} .hero .donutwrap{margin-left:0;}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px;overflow-x:auto;}
+.card h2{margin:0 0 4px;font-family:var(--serif);font-weight:600;font-size:1.1rem;}
+.card h3{margin:0 0 8px;font-size:.85rem;color:var(--sub);font-weight:700;}
+.card .desc{font-size:.76rem;color:var(--sub);margin-bottom:10px;}
+.bar-row{margin:10px 0;font-size:.8rem;}
+.bar-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;}
+.bar-track{background:var(--chip);border-radius:5px;height:12px;position:relative;}
+.bar-fill{height:100%;border-radius:5px;}
+.delta{font-weight:700;}
+.delta.up{color:var(--good);} .delta.down{color:var(--bad);}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+th{color:var(--sub);font-weight:700;position:sticky;top:0;background:var(--card);}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.7rem;font-weight:700;}
+.pill.bad{background:var(--bad-bg);color:var(--bad);}
+.pill.warn{background:var(--warn-bg);color:var(--warn);}
+.pill.good{background:var(--good-bg);color:var(--good);}
+.callout{background:var(--chip);border-left:3px solid var(--brand);border-radius:6px;padding:9px 12px;font-size:.8rem;margin-bottom:8px;}
+.callout.bad{border-color:var(--bad);} .callout.good{border-color:var(--good);}
+#empty{text-align:center;padding:70px 20px;color:var(--sub);}
+#empty .bigicon{font-size:2.4rem;margin-bottom:10px;}
+#dash{display:none;}
+#printReport{display:none;}
+.strengthTable input{width:80px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);}
+footer{text-align:center;color:var(--sub);font-size:.75rem;padding:22px;}
+details summary{cursor:pointer;font-weight:700;font-size:.85rem;}
+.rowflex{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+@media print{
+  header,.toolbar,.badge,footer,#empty,.no-print,details summary,#dash{display:none !important;}
+  details{display:block !important;}
+  body{background:#fff;color:#000;}
+  @page{size:A4;margin:10mm;}
+  #printReport{display:block;}
+  #printReport *{box-sizing:border-box;}
+  #printReport{font-size:9px;color:#141c26;}
+  #printReport .prTitleRow{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;}
+  #printReport .prMeta{font-size:8px;color:#555;text-align:right;}
+  #printReport .prKpis{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:6px;}
+  #printReport .prKpi{border:1px solid #ccc;border-radius:5px;padding:4px 5px;text-align:center;}
+  #printReport .prKpi .v{font-family:var(--serif);font-size:13px;font-weight:700;color:#162e4d;}
+  #printReport .prKpi .l{font-size:6.5px;color:#555;}
+  #printReport .prKpi .d{font-size:6.5px;font-weight:700;}
+  #printReport .prKpi .d.up{color:#1f7a4d;} #printReport .prKpi .d.down{color:#b3261e;}
+  #printReport .prRow{display:grid;grid-template-columns:1.05fr 1fr;gap:8px;margin-bottom:6px;}
+  #printReport .prRow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:6px;}
+  #printReport .prSplitBar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:4px;background:#eee;}
+  #printReport .prSplitBar div{height:100%;}
+  #printReport .prBox{border:1px solid #ccc;border-radius:6px;padding:5px 7px;}
+  #printReport .prBox h4{margin:0 0 3px;font-size:9px;color:#162e4d;border-bottom:1px solid #ddd;padding-bottom:2px;}
+  #printReport table{width:100%;border-collapse:collapse;font-size:8px;}
+  #printReport th,#printReport td{padding:1.5px 4px;border-bottom:1px solid #e5e5e5;text-align:left;white-space:nowrap;}
+  #printReport th{color:#555;font-weight:700;}
+  #printReport .prCallouts div{font-size:8px;margin-bottom:2px;padding:2px 6px;border-left:2px solid #162e4d;background:#f4f6f8;}
+  #printReport .prFoot{margin-top:4px;font-size:7px;color:#777;text-align:center;}
+  #printReport .prAppendix{page-break-before:always;padding-top:6px;}
+  #printReport .prAppendixTitle{font-size:11px;font-weight:700;color:#162e4d;margin-bottom:6px;border-bottom:2px solid #162e4d;padding-bottom:4px;}
+  #printReport .prAppendixTable{width:100%;border-collapse:collapse;font-size:9px;}
+  #printReport .prAppendixTable th,#printReport .prAppendixTable td{padding:3px 6px;border-bottom:1px solid #e5e5e5;text-align:left;}
+  #printReport .prAppendixTable tr{page-break-inside:avoid;}
+  #printReport .prAppendixTable tr.yrHead td{background:#eef1f6;color:#162e4d;font-weight:700;padding-top:8px;border-bottom:1px solid #162e4d;}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="puCrest" clip-rule="evenodd" fill-rule="evenodd" viewBox="0 0 23.424999 21.822001"><path d="m22.412 21.518.159-.009c.007.044.025.081.052.11.028.029.07.052.128.07s.123.026.196.026c.064 0 .121-.006.17-.02.049-.013.086-.032.11-.055s.036-.049.036-.077-.012-.053-.035-.073c-.023-.021-.061-.039-.114-.053-.035-.01-.11-.024-.227-.044s-.199-.039-.246-.056c-.061-.022-.106-.05-.136-.084-.03-.033-.045-.07-.045-.111 0-.045.018-.087.055-.127.036-.039.09-.069.16-.09.07-.02.148-.03.233-.03.095 0 .178.011.25.032s.128.053.167.094c.038.042.059.089.062.142l-.161.008c-.009-.056-.039-.099-.089-.128s-.124-.043-.221-.043c-.103 0-.177.013-.224.039-.046.026-.07.058-.07.095 0 .032.017.059.05.079.033.021.117.043.254.064.137.022.231.041.282.057.074.025.129.055.164.092.036.037.053.079.053.127s-.019.093-.058.135-.095.075-.167.099c-.073.023-.155.035-.245.035-.116 0-.212-.012-.29-.036-.078-.023-.139-.059-.184-.106-.044-.048-.067-.101-.069-.162zm-17.783-.026.169.03c-.036.097-.1.172-.191.223-.092.051-.204.077-.337.077-.137 0-.249-.02-.335-.059-.086-.04-.151-.097-.196-.171-.045-.075-.067-.155-.067-.241 0-.093.025-.174.076-.244.05-.069.122-.122.216-.158.093-.036.196-.054.309-.054.127 0 .234.023.321.068.087.046.147.11.182.193l-.166.028c-.03-.066-.073-.113-.129-.143s-.126-.045-.212-.045c-.098 0-.179.017-.245.05s-.112.077-.139.133c-.026.055-.04.113-.04.172 0 .076.016.143.048.2.031.056.08.099.147.127s.139.042.216.042c.095 0 .175-.019.24-.057s.11-.095.133-.171zm2.751-.037v-.105l.54-.001v.333c-.083.046-.168.081-.256.105-.088.023-.179.035-.271.035-.126 0-.239-.019-.342-.057-.102-.037-.179-.092-.231-.163s-.078-.151-.078-.239.026-.169.078-.245c.051-.075.126-.131.223-.168.098-.036.21-.055.336-.055.092 0 .176.011.25.032.075.02.133.05.175.087.043.038.075.087.097.147l-.152.029c-.02-.045-.043-.081-.072-.107-.028-.027-.069-.048-.121-.063-.053-.016-.112-.024-.176-.024-.077 0-.143.009-.199.025-.057.017-.102.038-.137.065-.034.027-.061.057-.08.089-.032.055-.049.116-.049.18 0 .08.02.147.059.201s.096.093.171.12c.075.026.154.039.238.039.073 0 .144-.01.214-.03.069-.019.122-.041.158-.063v-.167zm11.929 0v-.105l.54-.001v.333c-.083.046-.168.081-.257.105-.088.023-.178.035-.271.035-.125 0-.239-.019-.341-.057-.102-.037-.179-.092-.231-.163s-.078-.151-.078-.239.026-.169.078-.245c.051-.075.126-.131.223-.168.097-.036.21-.055.336-.055.092 0 .176.011.25.032.075.02.133.05.175.087.042.038.074.087.097.147l-.152.029c-.02-.045-.043-.081-.072-.107-.028-.027-.069-.048-.121-.063-.053-.016-.112-.024-.176-.024-.077 0-.143.009-.2.025-.056.017-.101.038-.136.065-.034.027-.061.057-.08.089-.032.055-.049.116-.049.18 0 .08.02.147.059.201s.096.093.171.12c.075.026.154.039.238.039.073 0 .144-.01.213-.03.07-.019.123-.041.158-.063v-.167zm-8.932-.439h-.752v.275h.705v.105h-.705v.305h.782v.105h-.95v-.896h.92zm11.919 0h-.421v.79h-.169v-.79h-.419v-.106h1.009zm-13.957.79h-.168v-.896h.565c.113 0 .199.008.258.024.059.017.106.045.142.086.035.04.053.086.053.135 0 .064-.029.117-.088.161-.058.043-.149.071-.271.083.045.015.079.029.102.045.049.031.096.071.14.118l.221.244h-.212l-.168-.186c-.049-.054-.09-.095-.122-.124-.032-.028-.06-.048-.085-.059-.026-.012-.051-.02-.077-.024-.019-.003-.05-.004-.094-.004h-.196zm3.353 0h-.192l-.149-.271h-.532l-.14.271h-.179l.489-.896h.182zm-6.513 0h-.169v-.896h.169v.368h.662v-.368h.169v.896h-.169v-.422h-.662zm15.092 0h-.169v-.896h.169v.368h.662v-.368h.169v.896h-.169v-.422h-.662zm-7.662-.79h-.422v.79h-.168v-.79h-.42v-.106h1.01zm1.097 0h-.753v.275h.705v.105h-.705v.305h.782v.105h-.95v-.896h.921zm.433.79h-.168v-.896h.564c.114 0 .2.008.259.024.059.017.106.045.142.086.035.04.053.086.053.135 0 .064-.029.117-.088.161-.058.043-.149.071-.271.083.045.015.079.029.102.045.049.031.096.071.14.118l.221.244h-.212l-.168-.186c-.049-.054-.09-.095-.122-.124-.032-.028-.06-.048-.086-.059-.025-.012-.05-.02-.076-.024-.02-.003-.051-.004-.094-.004h-.196zm-10.553 0h-.193l-.148-.271h-.533l-.139.271h-.179l.489-.897h.181zm12.335 0h-.169v-.896h.169v.368h.662v-.368h.169v.896h-.169v-.422h-.662zm-15.688 0h-.168v-.896h.564c.114 0 .2.008.259.024.059.017.106.045.142.086.035.04.053.086.053.135 0 .064-.029.117-.088.161-.059.043-.149.071-.271.083.045.015.078.029.102.045.049.031.095.071.139.118l.222.244h-.212l-.168-.186c-.05-.054-.09-.095-.122-.124-.032-.028-.06-.048-.086-.059-.025-.012-.05-.02-.077-.024-.019-.003-.05-.004-.093-.004h-.196zm17.724-.79h-.753v.275h.705v.105h-.705v.305h.782v.105h-.95v-.896h.921zm.459.79h-.168v-.896h.168zm-16.145-.79h-.752v.275h.704v.105h-.704v.305h.782v.105h-.951v-.896h.921zm.49.422h.432l-.133-.248c-.04-.075-.071-.137-.09-.186-.017.058-.039.115-.069.172zm8.106 0h.432l-.133-.248c-.04-.075-.07-.137-.09-.186-.016.058-.039.115-.069.172zm-2.125-.429h-.403v.297h.363c.076 0 .137-.006.18-.017.044-.011.077-.029.099-.054.023-.024.034-.051.034-.08 0-.043-.021-.078-.065-.105s-.113-.041-.208-.041zm5.8 0h-.403v.297h.363c.076 0 .137-.006.18-.017.044-.011.077-.029.099-.054.023-.024.034-.051.034-.08 0-.043-.022-.078-.065-.105-.044-.027-.113-.041-.208-.041zm-13.906 0h-.403v.297h.362c.077 0 .138-.006.181-.017.044-.011.076-.029.099-.054.023-.024.034-.051.034-.08 0-.043-.022-.078-.066-.105-.043-.027-.112-.041-.207-.041zm21.045-.953v-.105h.539v.332c-.082.047-.168.082-.256.105s-.178.035-.271.035c-.125 0-.239-.019-.341-.057-.102-.037-.179-.092-.231-.163-.053-.071-.079-.151-.079-.239s.026-.168.078-.244.126-.132.224-.169c.097-.036.209-.055.336-.055.092 0 .175.011.25.032.074.021.133.05.175.088.042.037.074.086.097.146l-.153.03c-.019-.046-.043-.082-.071-.108s-.069-.047-.122-.063c-.052-.015-.111-.023-.175-.023-.077 0-.144.008-.2.024-.056.017-.101.039-.136.066-.034.026-.061.056-.08.088-.033.055-.049.116-.049.181 0 .08.02.146.059.2s.096.094.171.12c.074.026.153.039.237.039.074 0 .145-.01.214-.03.07-.019.122-.04.158-.063v-.167zm-21.023 0v-.105h.539v.332c-.082.047-.168.082-.256.105s-.178.035-.271.035c-.125 0-.239-.019-.341-.057-.102-.037-.179-.092-.232-.163-.052-.071-.078-.151-.078-.239s.026-.168.078-.244.127-.132.224-.169c.097-.036.209-.055.336-.055.092 0 .175.011.25.032.074.021.133.05.175.088.042.037.074.086.096.146l-.152.03c-.019-.046-.043-.082-.071-.108s-.069-.047-.122-.063c-.052-.015-.111-.023-.175-.023-.077 0-.144.008-.2.024-.056.017-.101.039-.136.066-.034.026-.061.056-.08.088-.033.055-.049.116-.049.181 0 .08.02.146.059.2s.096.094.171.12c.074.026.153.039.237.039.074 0 .145-.01.214-.03.07-.019.122-.04.158-.063v-.167zm13.851-.085c0-.148.057-.265.171-.349.113-.084.26-.126.439-.126.118 0 .224.019.318.059.095.039.167.095.216.165.05.071.074.151.074.241 0 .091-.026.172-.078.244-.052.071-.126.126-.221.163-.096.037-.199.055-.31.055-.12 0-.227-.02-.321-.061-.095-.041-.166-.097-.215-.167-.048-.07-.073-.145-.073-.224zm-7.497 0c0-.148.057-.265.171-.349.113-.084.26-.126.439-.126.118 0 .224.019.318.059.095.039.167.095.216.165.05.071.074.151.074.241 0 .091-.026.172-.078.244-.052.071-.126.126-.221.163-.096.037-.199.055-.31.055-.12 0-.227-.02-.321-.061-.095-.041-.166-.097-.215-.167-.048-.07-.073-.145-.073-.224zm-1.273.437h-.163v-.897h.254l.301.635c.028.059.049.103.061.133.015-.033.037-.081.068-.144l.305-.624h.227v.897h-.163v-.751l-.37.751h-.152l-.368-.763zm7.697 0h-.162v-.897h.173l.669.704v-.704h.161v.897h-.172l-.669-.705zm9.957-.791h-.752v.275h.704v.105h-.704v.305h.782v.106h-.951v-.897h.921zm-11.142.791h-.169v-.897h.169v.445l.632-.445h.229l-.535.364.558.533h-.222l-.454-.454-.208.143zm-1.594-.791h-.752v.275h.704v.105h-.704v.305h.781v.106h-.95v-.897h.921zm-2.038.791h-.169v-.897h.565c.113 0 .2.009.259.025s.106.044.141.085c.036.041.053.086.053.135 0 .064-.029.117-.087.161-.059.043-.149.071-.272.083.045.015.079.03.102.045.049.032.096.071.14.119l.222.244h-.212l-.169-.187c-.049-.053-.09-.095-.122-.123-.031-.029-.06-.049-.085-.06-.025-.012-.051-.019-.077-.024-.019-.003-.05-.004-.094-.004h-.195zm7.72 0h-.172l-.338-.897h.173l.194.588c.02.061.038.123.053.183.033-.095.052-.15.058-.165l.242-.606h.204l.182.454c.046.112.079.219.099.317.016-.056.037-.121.063-.194l.2-.577h.17l-.35.897h-.162l-.268-.683c-.023-.057-.036-.092-.041-.105-.013.041-.025.076-.037.105zm1.446-.106h.628v.106h-.796v-.897h.168zm-14.498.106h-.162v-.897h.173l.669.704v-.704h.162v.897h-.173l-.669-.705zm16.251-.791h-.753v.275h.705v.105h-.705v.305h.782v.106h-.95v-.897h.921zm-16.708.791h-.169v-.897h.169zm17.43 0h-.46v-.897h.439c.099 0 .174.005.227.014.072.011.135.033.186.063.067.041.118.091.151.154.034.062.05.133.05.213 0 .068-.011.128-.034.181-.023.052-.051.096-.087.13-.035.035-.074.062-.116.082-.042.019-.092.035-.152.045-.059.01-.127.015-.204.015zm-17.762 0h-.192l-.149-.272h-.532l-.14.272h-.179l.489-.897h.182zm4.688-.435c0 .108.041.193.124.255s.186.093.311.093c.126 0 .231-.031.313-.094.082-.062.123-.151.123-.267 0-.073-.018-.136-.053-.191-.035-.054-.086-.097-.154-.126-.067-.03-.143-.045-.227-.045-.119 0-.222.028-.308.086s-.129.154-.129.289zm7.497 0c0 .108.041.193.124.255.082.062.186.093.31.093.127 0 .232-.031.314-.094.082-.062.123-.151.123-.267 0-.073-.018-.136-.053-.191-.035-.054-.086-.097-.154-.126-.067-.03-.143-.045-.227-.045-.119 0-.222.028-.308.086s-.129.154-.129.289zm5.553-.356h-.268v.685h.272c.084 0 .151-.006.198-.016.048-.011.086-.027.114-.047.04-.028.072-.066.094-.113.022-.048.033-.105.033-.173 0-.094-.022-.166-.065-.216-.044-.051-.097-.084-.16-.101-.045-.013-.118-.019-.218-.019zm-18.563.423h.432l-.133-.248c-.04-.076-.07-.138-.09-.186-.016.057-.039.114-.069.171zm7.349-.429h-.403v.296h.362c.077 0 .137-.006.181-.017.043-.011.076-.029.099-.054.022-.024.033-.051.033-.08 0-.042-.021-.077-.065-.105-.043-.027-.113-.04-.207-.04zm14.328-1.225c-.424-.502-.617-1.885-1.499-1.56-.305-.502-.467-1.481-1.386-1.298l-.581-1.152c-.431.08-1.855-.448-2.296-.546-1.504-.332-2.993-.715-4.436-.013-.149.072.075-.267.195-.364 1.512-1.211 3.686-.502 6.07.159l-.663-1.142c-1.355.196-4.313-1.988-7.084.576-2.772-2.564-5.73-.38-7.084-.576l-.664 1.142c2.385-.661 4.558-1.37 6.071-.159.12.097.344.436.195.364-1.443-.702-2.933-.319-4.436.013-.441.098-1.866.626-2.297.546l-.581 1.152c-.918-.183-1.081.796-1.385 1.298-.882-.325-1.075 1.058-1.489 1.56l10.04-.013v.456h3.26v-.456zm-10.165-3.189c1.308-1.176 4.331-.173 5.927.155-.859.59-3.917-.247-5.927-.155zm-3.03 0c-1.308-1.176-4.331-.173-5.927.155.859.59 3.917-.247 5.927-.155zm2.044-3.016h-1.038c-.922-2.29-3.643-1.058-5.975-.556l.518-1.264c1.64-.221 3.795-1.266 5.715.384.186.16.371.129.522 0 1.923-1.647 4.074-.605 5.715-.384l.518 1.264c-2.333-.502-5.053-1.734-5.975.556zm-5.198-3.059.375-.772c.798-.545 2.267-.974 4.205.086l.651.12c1.024-.537 2.452-.896 3.745-.566.159.041.316.092.469.154l.625 1.133c.068.123-.292-.024-.428-.069-1.081-.356-2.285-.373-2.982-.155l.214.378c-.666-.269-1.672.698-2.374.326l-.125.086c-.239.006-.429-.034-.572-.12-.314-.014-.406-.035-.428-.137l.321-.241v-.188c-1.125-.45-2.381-.364-3.696-.035zm6.231-2.11v-.207c-.485-.249-.876-.53-1.206-.828-.516-.295-1.048-.505-1.668-.596-.33-.048-1.486.025-.684-.294 1.288-.512 2.819-.323 3.844.723.171.175.531.087.857-.068.985-.47 2.422-.738 3.714.102-.441.75-2.417-.337-3.732.292-.19.366 1.262.115 1.678.378-.26.134-.983.408-1.446.669-.925-.062-1.568.176-2.017.618-.202-.247-.411-.475-.661-.584l.036-.128h.973l.08-.077zm1.964-2.644v-.137c-.542-.088-1.268-.31-1.617-.359-.769-.585-1.681-1.068-2.364-.996-.054-.132.036-.218.268-.258.831-.187 1.465-.075 1.964.241l2.303.411c.255.141.512.129.768-.051l1.142-.944c.404-.33 1.256-.482 2.232-.584l.038.137c-.821.298-1.631.61-2.288 1.116-.184.142-.083.263.232.292v.137c-.672.006-.988.578-1.267.892-.548.003-1.095.278-1.643.739-.233-.149-.617-.078-.678-.223.113-.207.416-.344.91-.413zm2.59-2.719c-.17-.061-.452.367-.441.014h-.876c-.276-.17-.534-.241-.85-.183l-.024-.087c.365-.313.102-.428-.103-.498-.42-.141-1.283.024-1.303-.895.306.138.656.53 1.673.583l.385.156c.175.118.329.266.589.261-.04.11.129.149.49.1.289-.039.575.041.862.186.229-.028.468-.128.655.129-.138.054-.288.163-.342.214-.085-.16-.432-.154-.715.02z"/></symbol></svg>
+<header>
+  <div class="htop">
+    <svg class="logo-mark" viewBox="0 0 23.424999 21.822001"><use href="#puCrest"></use></svg>
+    <div class="titleblock">
+      <div class="instname">Presidency University, Bengaluru</div>
+      <h1>Daily Attendance Briefing</h1>
+    </div>
+  </div>
+  <p id="hdrSub">Upload today's absentee report to see insights</p>
+</header>
+<div class="print-header">
+  <svg class="logo-mark" viewBox="0 0 23.424999 21.822001"><use href="#puCrest"></use></svg>
+  <div class="titleblock"><div class="instname">Presidency University, Bengaluru</div><h1>Daily Attendance Briefing</h1></div>
+</div>
+<div id="printReport"></div>
+<div class="wrap">
+  <div class="no-print"><span class="badge local" id="syncBadge">Checking sync status…</span></div>
+  <div class="toolbar no-print">
+    <label class="fileBtn" id="fileBtnLabel">Upload Excel(s)<input type="file" id="fileInput" accept=".xlsx,.xls" multiple></label>
+    <select id="dateSelect"><option>No data yet</option></select>
+    <span class="spacer"></span>
+    <span id="status"></span>
+    <button class="primary" id="printBtn">Generate PDF Report</button>
+    <button class="ghost" id="clearBtn">Clear all data</button>
+  </div>
+
+  <details class="card no-print" id="strengthPanel">
+    <summary>Section strength setup — needed for attendance % — click to expand</summary>
+    <p class="desc">Attendance % needs each section's total enrolled strength (as in Linways). Sections that differ only by a trailing letter (01A/01B, 05A_P…) are the same section and are auto-merged by number. Enter it once — it's shared with everyone using this dashboard — or auto-fill it from the biggest roster seen so far in uploads.</p>
+    <div class="rowflex">
+      <button class="primary small" id="autoFill">Auto-fill from uploaded data</button>
+      <span style="font-size:.75rem;color:var(--sub);">Uses the highest number of students seen per section across all uploaded days. Review before saving.</span>
+    </div>
+    <div class="strengthTable" id="strengthTable" style="max-height:300px;overflow:auto;margin:10px 0;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="primary" id="saveStrength">Save Strengths</button>
+      <span style="font-size:.75rem;color:var(--sub);align-self:center;">Or paste "Batch,Strength" pairs (one per line):</span>
+    </div>
+    <textarea id="bulkPaste" rows="3" style="width:100%;margin-top:8px;" placeholder="2024BCA01,55&#10;2024BCA02,58"></textarea>
+    <button class="ghost" id="applyPaste" style="margin-top:6px;">Apply Paste</button>
+  </details>
+
+  <div id="empty"><div class="bigicon">📋</div>No reports uploaded yet. Upload one or more daily absentee Excel files to build your dashboard. Set up section strengths above to unlock attendance %, programme and semester comparisons.</div>
+
+  <div id="dash">
+    <div class="hero" id="hero"></div>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card" id="ugpgCard">
+      <h2>UG vs PG performance</h2>
+      <div class="desc">Undergraduate vs postgraduate attendance, benchmarked against today's school average.</div>
+      <div id="ugpgBars"></div>
+    </div>
+
+    <div class="card" id="progCard">
+      <h2>Programme-wise performance</h2>
+      <div class="desc">Comparative attendance across programmes vs. school average.</div>
+      <div id="progBars"></div>
+    </div>
+
+    <div class="card" id="semCard">
+      <h2>Batch / semester-wise performance</h2>
+      <div class="desc">Cohort progression by joining year, vs. school average.</div>
+      <div id="semBars"></div>
+    </div>
+
+    <div class="card" id="hourCard">
+      <h2>Hour-wise absence pattern</h2>
+      <div class="desc">Not every section has a class in every hour, and this varies section by section — so a single "Hour 1 total" can mislead. This reads it straight from today's data, per section.</div>
+      <div id="hourBars" style="margin-bottom:16px;"></div>
+      <div id="hourSplit" style="margin-bottom:14px;"></div>
+      <div id="hourHeatmap" style="overflow-x:auto;"></div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="rowflex"><h2 style="margin:0;">Section-level detail</h2><input class="search" id="secSearch" placeholder="Filter section…" style="max-width:160px;"></div>
+          <div class="desc">Total strength, present, absent and attendance % per section. Sorted by lowest attendance first.</div>
+          <table><thead><tr><th>Batch</th><th>Prog.</th><th>Strength</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead><tbody id="secTable"></tbody></table>
+        </div>
+        <div class="card">
+          <h2>Trend across uploaded days</h2>
+          <div id="trendChart"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" id="calloutCard">
+          <h3>Highlights</h3>
+          <div id="callouts"></div>
+        </div>
+        <div class="card">
+          <h3>Repeat absentee watchlist</h3>
+          <div class="desc" style="margin-bottom:6px;">Students absent (any hours) on more than one uploaded day.</div>
+          <table><thead><tr><th>Roll No</th><th>Name</th><th>Days Absent</th></tr></thead><tbody id="repeatTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer>Presidency University, Rajanukunte, Yelahanka, Bengaluru · <a href="https://presidencyuniversity.in/" target="_blank" rel="noopener" style="color:inherit;">presidencyuniversity.in</a><br>When shared storage is connected, reports and section strengths sync to everyone with access to this page in your organization. Click "Generate PDF Report" then choose "Save as PDF" in the print dialog.</footer>
+
+<script>
+const PROGRAMS = ['BCAAIML','BCADS','BCA','MCA','MDS','BCC','BCU'];
+const PROG_INFO = {
+  BCA:{label:'BCA',full:'Bachelor of Computer Applications',ug:true},
+  BCAAIML:{label:'AIML',full:'BCA – AI & Machine Learning',ug:true},
+  BCADS:{label:'DS',full:'BCA – Data Science',ug:true},
+  BCC:{label:'BSC-CS',full:'B.Sc Computer Science',ug:true},
+  BCU:{label:'BSC-ADC',full:'B.Sc AI, Data Science & Cloud',ug:true},
+  MCA:{label:'MCA',full:'Master of Computer Applications',ug:false},
+  MDS:{label:'MSC-DS',full:'M.Sc Data Science',ug:false},
+  OTHER:{label:'OTHER',full:'Other / Unclassified',ug:true}
+};
+let STORE = {}, STRENGTH = {};
+let dbCap=null, userCap=null, canWrite=null, cloudMode=false;
+
+function loadLocal(){ try{ STORE = JSON.parse(localStorage.getItem('absentee_store')||'{}'); }catch(e){ STORE={}; } try{ STRENGTH = JSON.parse(localStorage.getItem('absentee_strength')||'{}'); }catch(e){ STRENGTH={}; } }
+function saveLocal(){ try{ localStorage.setItem('absentee_store', JSON.stringify(STORE)); }catch(e){} try{ localStorage.setItem('absentee_strength', JSON.stringify(STRENGTH)); }catch(e){} }
+
+function setSyncBadge(mode, extra){
+  const el = document.getElementById('syncBadge');
+  el.className = 'badge ' + mode;
+  if(mode==='synced') el.textContent = '🟢 Synced — shared with everyone who opens this page in your organization' + (extra||'');
+  else if(mode==='readonly') el.textContent = '👀 Read-only — you can view shared reports, but only an editor can upload or edit them';
+  else el.textContent = '🔒 Local only on this device — sharing isn\'t available in this view (open this page from within your organization to enable it)';
+  const canAct = mode!=='readonly';
+  document.getElementById('fileBtnLabel').classList.toggle('disabled', !canAct);
+  document.getElementById('fileInput').disabled = !canAct;
+  ['saveStrength','applyPaste','autoFill','clearBtn'].forEach(id=>document.getElementById(id).disabled = !canAct);
+}
+
+function sanitizeId(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,'-').slice(0,180) || 'unknown'; }
+
+async function initCloud(){
+  loadLocal();
+  if(!(window.claude && window.claude.use)){ setSyncBadge('local'); refreshDateSelect(); return; }
+  try{
+    userCap = await window.claude.use('user');
+    dbCap = await window.claude.use('db');
+  }catch(e){ dbCap=null; }
+  if(!dbCap){ setSyncBadge('local'); refreshDateSelect(); return; }
+  cloudMode = true;
+  canWrite = userCap ? await userCap.can('data.write') : null;
+  setSyncBadge(canWrite===false ? 'readonly' : 'synced');
+
+  dbCap.collection('days').onSnapshot(snap=>{
+    STORE = {};
+    snap.docs.forEach(d=>{ const data=d.data(); if(data && data.date) STORE[data.date]=data; });
+    const cur = document.getElementById('dateSelect').value;
+    refreshDateSelect(STORE[cur] ? cur : undefined);
+  }, err=>{ setSyncBadge('local'); cloudMode=false; loadLocal(); refreshDateSelect(); });
+
+  dbCap.doc('settings/strength').onSnapshot(snap=>{
+    STRENGTH = (snap.exists && snap.data()) || {};
+    renderStrengthTable();
+    const dates = Object.keys(STORE).sort();
+    if(dates.length) renderDay(document.getElementById('dateSelect').value || dates[dates.length-1]);
+  }, err=>{});
+}
+
+async function saveDay(dayDoc){
+  if(cloudMode && canWrite!==false){
+    try{ await dbCap.collection('days').doc(sanitizeId(dayDoc.date)).set(dayDoc); return true; }
+    catch(e){ document.getElementById('status').textContent = 'Could not save to shared storage: ' + (e&&e.code||e.message||e); return false; }
+  }
+  STORE[dayDoc.date] = dayDoc; saveLocal(); return true;
+}
+async function saveStrengthMap(){
+  if(cloudMode && canWrite!==false){
+    try{ await dbCap.doc('settings/strength').set(STRENGTH); return true; }
+    catch(e){ document.getElementById('status').textContent = 'Could not save strengths to shared storage: ' + (e&&e.code||e.message||e); return false; }
+  }
+  saveLocal(); return true;
+}
+async function deleteAllDays(){
+  if(cloudMode && canWrite!==false){
+    const ids = Object.keys(STORE).map(sanitizeId);
+    for(const id of ids){ try{ await dbCap.collection('days').doc(id).delete(); }catch(e){} }
+    return;
+  }
+  STORE = {}; saveLocal();
+}
+
+function parseBatch(batch){
+  batch = String(batch||'').trim();
+  const m = batch.match(/^(\d{4})(.*)$/);
+  const year = m ? m[1] : null;
+  const rest = m ? m[2] : batch;
+  let prog = 'OTHER';
+  for(const p of PROGRAMS){ if(rest.startsWith(p)){ prog = p; break; } }
+  const afterProg = rest.startsWith(prog) ? rest.slice(prog.length) : rest;
+  const numMatch = afterProg.match(/^(\d+)/);
+  // Section identity is the number only — trailing letters (01A, 01B, 05A_P) are the
+  // same section split by hour/elective, not different sections — so merge here.
+  const section = (year && prog!=='OTHER' && numMatch) ? `${year}${prog}${numMatch[1]}` : batch;
+  return { program: prog, year: year, section: section, batch: batch };
+}
+
+function parseWorkbook(ab, fallbackName){
+  const wb = XLSX.read(ab, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  let headerIdx = -1;
+  for(let i=0;i<rows.length;i++){ if(rows[i] && String(rows[i][0]).trim()==='Sl No.'){ headerIdx=i; break; } }
+  if(headerIdx===-1) throw new Error((fallbackName||'file')+': could not find header row (expected "Sl No.")');
+  const records = []; let date = null;
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const r = rows[i];
+    if(!r || !r[1]) continue;
+    const hours = r[5]? String(r[5]).trim() : '';
+    if(!date && r[4]) date = String(r[4]).trim();
+    records.push({ roll:String(r[1]).trim(), name:String(r[2]||'').trim(), batch:String(r[3]||'').trim(), hours: hours });
+  }
+  if(!date){ for(let i=0;i<headerIdx;i++){ const c=rows[i]&&rows[i][0]; if(c && String(c).includes('Attendance Date')){ date = String(c).split(':')[1].trim(); } } }
+  return { date: date || 'Unknown Date', records };
+}
+
+function summarize(recs){
+  // Blank "Absent Hours" = present that day. Only rows listing hours (e.g. "HOUR 1,HOUR 2")
+  // are actual absences. First find the highest hour number seen, to tell full-day vs partial.
+  let periodsPerDay = 0;
+  recs.forEach(r=>{
+    if(!r.hours) return;
+    r.hours.split(',').forEach(h=>{ const n=h.match(/\d+/); if(n) periodsPerDay = Math.max(periodsPerDay, Number(n[0])); });
+  });
+  periodsPerDay = periodsPerDay || 1;
+  let fullDay=0, partial=0;
+  const hourCount = {}; for(let i=1;i<=periodsPerDay;i++) hourCount[i]=0;
+  const progCount = {}, secCount = {}, secHourMatrix = {}, secTotalRows = {};
+  recs.forEach(r=>{
+    const {section} = parseBatch(r.batch);
+    secTotalRows[section] = (secTotalRows[section]||0)+1; // every listed row = one roster seat that day
+  });
+  const absentRecs = recs.filter(r=>r.hours);
+  absentRecs.forEach(r=>{
+    const {program, section} = parseBatch(r.batch);
+    progCount[program] = (progCount[program]||0)+1;
+    secCount[section] = (secCount[section]||0)+1;
+    if(!secHourMatrix[section]) secHourMatrix[section] = {full:0, total:0};
+    const hoursArr = r.hours.split(',').map(h=>h.trim()).filter(Boolean);
+    hoursArr.forEach(h=>{
+      const n=h.match(/\d+/);
+      if(n && hourCount[n[0]]!==undefined){
+        hourCount[n[0]]++;
+        secHourMatrix[section][n[0]] = (secHourMatrix[section][n[0]]||0)+1;
+      }
+    });
+    secHourMatrix[section].total++;
+    if(hoursArr.length >= periodsPerDay){ fullDay++; secHourMatrix[section].full++; } else partial++;
+  });
+  return {total:absentRecs.length, totalRows:recs.length, periodsPerDay, fullDay, partial, hourCount, progCount, secCount, secHourMatrix, secTotalRows};
+}
+
+// combine absentee counts with saved section strength to get present/absent/% per section
+function computeAttendance(day){
+  const sections = [];
+  Object.keys(STRENGTH).forEach(sec=>{
+    const strength = Number(STRENGTH[sec])||0;
+    if(strength<=0) return;
+    const absent = day.summary.secCount[sec]||0;
+    const present = Math.max(0, strength-absent);
+    const pct = strength? (present/strength*100) : null;
+    const {program, year} = parseBatch(sec);
+    sections.push({batch:sec, program, year, strength, present, absent, pct});
+  });
+  return sections;
+}
+
+function groupSum(sections, keyFn){
+  const g = {};
+  sections.forEach(s=>{
+    const k = keyFn(s);
+    if(!g[k]) g[k] = {strength:0, present:0, absent:0, count:0};
+    g[k].strength += s.strength; g[k].present += s.present; g[k].absent += s.absent; g[k].count++;
+  });
+  Object.values(g).forEach(v=>{ v.pct = v.strength? v.present/v.strength*100 : 0; });
+  return g;
+}
+
+function fmt(n){ return Math.round(n*10)/10; }
+
+function comparisonBar(label, sub, pct, avg, extra){
+  const above = pct>=avg;
+  const color = above? 'var(--good)' : (avg-pct>5? 'var(--bad)':'var(--warn)');
+  const delta = fmt(pct-avg);
+  return `<div class="bar-row">
+    <div class="bar-top"><span><b>${label}</b> <span style="color:var(--sub);font-size:.72rem">${sub||''}</span></span>
+    <span><span class="delta ${above?'up':'down'}">${above?'+':''}${delta}%</span> vs avg &nbsp; <b>${fmt(pct)}%</b></span></div>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>
+    ${extra?`<div style="font-size:.7rem;color:var(--sub);margin-top:2px">${extra}</div>`:''}
+  </div>`;
+}
+
+function renderStrengthTable(){
+  const batches = new Set(Object.keys(STRENGTH));
+  Object.values(STORE).forEach(day=>{ Object.keys((day.summary&&day.summary.secCount)||{}).forEach(b=>batches.add(b)); Object.keys((day.summary&&day.summary.secTotalRows)||{}).forEach(b=>batches.add(b)); });
+  const sorted = Array.from(batches).sort();
+  const rows = sorted.map(b=>`<tr><td style="padding:3px 8px">${b}</td><td style="padding:3px 8px"><input class="txt" data-batch="${b}" type="number" min="0" value="${STRENGTH[b]||''}" placeholder="strength"></td></tr>`).join('');
+  document.getElementById('strengthTable').innerHTML = `<table>${rows||'<tr><td>Upload a report first to list sections here.</td></tr>'}</table>`;
+}
+
+function levelPill(pct){
+  if(pct==null) return '<span class="pill">—</span>';
+  if(pct<75) return `<span class="pill bad">${fmt(pct)}%</span>`;
+  if(pct<85) return `<span class="pill warn">${fmt(pct)}%</span>`;
+  return `<span class="pill good">${fmt(pct)}%</span>`;
+}
+
+function heatColor(v, max){
+  if(!v) return 'transparent';
+  const t = Math.min(1, v/max);
+  return `rgba(28,58,94,${0.10 + t*0.62})`;
+}
+
+function donutSVG(present, absent, pctLabel){
+  const total = present+absent || 1;
+  const r=42, c=2*Math.PI*r, presentLen = c*(present/total);
+  return `<svg width="112" height="112" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="12"/>
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="#fff" stroke-width="12" stroke-dasharray="${presentLen} ${c-presentLen}" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+    <text x="50" y="46" text-anchor="middle" font-family="Fraunces,serif" font-size="18" font-weight="600" fill="#fff">${pctLabel}%</text>
+    <text x="50" y="62" text-anchor="middle" font-size="7" fill="rgba(255,255,255,.8)">present</text>
+  </svg>`;
+}
+
+function genericBarChart(labels, values, opts){
+  opts = opts||{};
+  const max = opts.max || Math.max(1,...values);
+  const n = labels.length || 1;
+  const w = Math.max(180, n*58), h=76, bw=Math.min(36,(w/n)-12);
+  let bars='';
+  values.forEach((v,i)=>{
+    const x = i*(w/n) + ((w/n)-bw)/2;
+    const bh = max? Math.max(0,(v/max)*48) : 0;
+    bars += `<rect x="${x}" y="${58-bh}" width="${bw}" height="${bh}" rx="3" fill="var(--brand)"></rect>
+      <text x="${x+bw/2}" y="${58-bh-4}" text-anchor="middle" font-size="8" fill="#141c26">${v}${opts.suffix||''}</text>
+      <text x="${x+bw/2}" y="70" text-anchor="middle" font-size="7" fill="#5c6570">${labels[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} 76" style="width:100%;max-width:${w}px;height:76px;"><line x1="0" y1="58" x2="${w}" y2="58" stroke="#ddd"/>${bars}</svg>`;
+}
+
+function hourBarChart(hourCount, periods){
+  const vals = []; for(let i=1;i<=periods;i++) vals.push(hourCount[i]||0);
+  const max = Math.max(1,...vals);
+  const w=Math.max(260, periods*70), h=110, bw=Math.min(48,(w/periods)-16);
+  let bars='';
+  vals.forEach((v,i)=>{
+    const x = i*(w/periods) + ((w/periods)-bw)/2;
+    const bh = (v/max)*74;
+    bars += `<rect x="${x}" y="${88-bh}" width="${bw}" height="${bh}" rx="3" fill="var(--brand)"></rect>
+      <text x="${x+bw/2}" y="${88-bh-5}" text-anchor="middle" font-size="10" fill="var(--ink)">${v}</text>
+      <text x="${x+bw/2}" y="102" text-anchor="middle" font-size="10" fill="var(--sub)">H${i+1}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} 110" style="width:100%;max-width:${w}px;height:110px;"><line x1="0" y1="88" x2="${w}" y2="88" stroke="var(--line)"/>${bars}</svg>`;
+}
+
+function renderHourSection(s){
+  document.getElementById('hourBars').innerHTML = `<div class="desc" style="margin-bottom:6px;">Total absence-hours logged per period today (across all sections).</div>` + hourBarChart(s.hourCount, s.periodsPerDay);
+
+  const totalAbs = s.total || 1;
+  const fdPct = Math.round(s.fullDay/totalAbs*100), ptPct = 100-fdPct;
+  document.getElementById('hourSplit').innerHTML = `
+    <div class="bar-top"><span><b>Full-day</b> vs <b>partial-hour</b> absences</span><span>${s.fullDay} full-day • ${s.partial} partial</span></div>
+    <div class="bar-track" style="display:flex;overflow:hidden;">
+      <div style="width:${fdPct}%;background:var(--bad);height:100%;"></div>
+      <div style="width:${ptPct}%;background:var(--warn);height:100%;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--sub);margin-top:2px"><span>Full-day ${fdPct}%</span><span>Partial ${ptPct}%</span></div>`;
+
+  const sections = Object.entries(s.secHourMatrix).sort((a,b)=>b[1].total-a[1].total);
+  if(!sections.length){ document.getElementById('hourHeatmap').innerHTML = '<div class="desc">No hour-wise absences to map today.</div>'; return; }
+  let maxCell = 1;
+  sections.forEach(([,m])=>{ for(let h=1;h<=s.periodsPerDay;h++) maxCell = Math.max(maxCell, m[h]||0); maxCell = Math.max(maxCell, m.full); });
+  const hourCols = Array.from({length:s.periodsPerDay}, (_,i)=>i+1);
+  let html = '<table><thead><tr><th>Section</th>' + hourCols.map(h=>`<th style="text-align:center">Hour ${h}</th>`).join('') + '<th style="text-align:center">Full Day</th><th style="text-align:center">Total</th></tr></thead><tbody>';
+  sections.forEach(([sec,m])=>{
+    html += `<tr><td>${sec}</td>` + hourCols.map(h=>`<td style="text-align:center;background:${heatColor(m[h]||0,maxCell)}">${m[h]||''}</td>`).join('') + `<td style="text-align:center;background:${heatColor(m.full,maxCell)}">${m.full||''}</td><td style="text-align:center"><b>${m.total}</b></td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('hourHeatmap').innerHTML = html;
+}
+
+function renderTrend(dates){
+  const w=420,h=120,pad=26;
+  const totals = dates.map(d=>STORE[d].summary.total);
+  const pcts = dates.map(d=>{
+    const secs = computeAttendance(STORE[d]);
+    if(!secs.length) return null;
+    const o = secs.reduce((a,x)=>({s:a.s+x.strength,p:a.p+x.present}),{s:0,p:0});
+    return o.s? o.p/o.s*100 : null;
+  });
+  const havePct = pcts.some(v=>v!=null);
+  const maxV = Math.max(1,...totals);
+  const stepX = totals.length>1 ? (w-pad*2)/(totals.length-1) : 0;
+  const yFor = v => h-pad-(v/maxV)*(h-pad*1.6);
+  const pts = totals.map((v,i)=> `${pad+i*stepX},${yFor(v)}`).join(' ');
+  const dots = totals.map((v,i)=>`<circle cx="${pad+i*stepX}" cy="${yFor(v)}" r="3" fill="var(--brand)"></circle>`).join('');
+  let pctLine = '';
+  if(havePct){
+    const yForPct = v => h-pad-(v/100)*(h-pad*1.6);
+    const validPts = pcts.map((v,i)=> v!=null ? `${pad+i*stepX},${yForPct(v)}` : null).filter(Boolean).join(' ');
+    pctLine = `<polyline points="${validPts}" fill="none" stroke="var(--good)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  }
+  document.getElementById('trendChart').innerHTML = totals.length>1
+    ? `<svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:460px;height:${h}px"><polyline points="${pts}" fill="none" stroke="var(--brand)" stroke-width="2"/>${dots}${pctLine}</svg>
+       <div style="font-size:.7rem;color:var(--sub);display:flex;gap:14px;flex-wrap:wrap;"><span>● <b style="color:var(--brand)">Absentee records</b> per day</span>${havePct?'<span>┅ <b style="color:var(--good)">Attendance %</b> per day (sections with strength set)</span>':''}</div>`
+    : `<div style="font-size:.8rem;color:var(--sub)">Upload more days to see the trend line.</div>`;
+}
+
+function renderRepeatWatchlist(){
+  const freq = {};
+  Object.values(STORE).forEach(day=>{ (day.absentees||[]).forEach(a=>{ const roll=a[0], name=a[1]; if(!freq[roll]) freq[roll]={name, roll, count:0}; freq[roll].count++; }); });
+  const list = Object.values(freq).filter(x=>x.count>1).sort((a,b)=>b.count-a.count).slice(0,15);
+  document.getElementById('repeatTable').innerHTML = list.length ? list.map(x=>`<tr><td>${x.roll}</td><td>${x.name}</td><td><b>${x.count}</b></td></tr>`).join('')
+    : '<tr><td colspan="3" style="color:var(--sub)">No repeat absentees yet — upload more days.</td></tr>';
+}
+
+let LAST_SECTIONS = [];
+function renderSecTable(filter){
+  filter = (filter||'').trim().toUpperCase();
+  const rows = LAST_SECTIONS.filter(x=>!filter || x.batch.toUpperCase().includes(filter));
+  document.getElementById('secTable').innerHTML = rows.map(x=>`<tr><td>${x.batch}</td><td>${PROG_INFO[x.program]?PROG_INFO[x.program].label:x.program}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td>${levelPill(x.pct)}</td></tr>`).join('') || '<tr><td colspan="6" style="color:var(--sub)">No matching sections.</td></tr>';
+}
+let LAST_RAW_SEC = null;
+function renderSecTableRaw(filter){
+  if(!LAST_RAW_SEC) return;
+  filter = (filter||'').trim().toUpperCase();
+  const rows = Object.entries(LAST_RAW_SEC).filter(([b])=>!filter || b.toUpperCase().includes(filter));
+  document.getElementById('secTable').innerHTML = rows.sort((a,b)=>b[1]-a[1]).map(([b,c])=>`<tr><td>${b}</td><td>${PROG_INFO[parseBatch(b).program]?PROG_INFO[parseBatch(b).program].label:''}</td><td>—</td><td>—</td><td>${c}</td><td>—</td></tr>`).join('');
+}
+
+function renderDay(dateKey){
+  const day = STORE[dateKey];
+  if(!day || !day.summary) return;
+  const s = day.summary;
+  document.getElementById('hdrSub').textContent = `Showing ${dateKey} · ${s.total} absentee record(s)`;
+  document.getElementById('empty').style.display='none';
+  document.getElementById('dash').style.display='block';
+
+  const sections = computeAttendance(day);
+  LAST_SECTIONS = sections; LAST_RAW_SEC = null;
+  const missingStrength = Object.keys(s.secCount).filter(b=>!(STRENGTH[b]>0));
+  const overall = sections.reduce((a,x)=>({strength:a.strength+x.strength,present:a.present+x.present,absent:a.absent+x.absent}),{strength:0,present:0,absent:0});
+  const overallPct = overall.strength? overall.present/overall.strength*100 : null;
+
+  document.getElementById('hero').innerHTML = overall.strength ? `
+    <div class="col"><div class="big">${fmt(overallPct)}%</div><div class="sub">Overall attendance</div></div>
+    <div class="col"><div class="big">${overall.strength}</div><div class="sub">Total strength (sections w/ data)</div></div>
+    <div class="col"><div class="big">${overall.present}</div><div class="sub">Present</div></div>
+    <div class="col"><div class="big">${overall.absent}</div><div class="sub">Absent</div></div>
+    <div class="donutwrap">${donutSVG(overall.present, overall.absent, fmt(overallPct))}</div>` :
+    `<div class="col"><div class="big">${s.total}</div><div class="sub">Total absentee records (set up section strength below to unlock % attendance)</div></div>`;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="v">${s.total}</div><div class="l">Total absentee records</div></div>
+    <div class="kpi"><div class="v">${s.fullDay}</div><div class="l">Full-day absent</div></div>
+    <div class="kpi"><div class="v">${s.partial}</div><div class="l">Partial / hour-wise</div></div>
+    <div class="kpi"><div class="v">${Object.keys(s.progCount).length}</div><div class="l">Specializations affected</div></div>
+    <div class="kpi"><div class="v">${sections.length}</div><div class="l">Sections with strength set</div></div>`;
+
+  if(sections.length){
+    const ugpg = groupSum(sections, s2=>PROG_INFO[s2.program].ug? 'UG':'PG');
+    document.getElementById('ugpgBars').innerHTML = Object.entries(ugpg).map(([k,v])=>
+      comparisonBar(k==='UG'?'Undergraduate':'Postgraduate', `${v.count} section(s) • ${v.strength} students`, v.pct, overallPct)).join('');
+
+    const progG = groupSum(sections, s2=>s2.program);
+    document.getElementById('progBars').innerHTML = Object.entries(progG).sort((a,b)=>b[1].pct-a[1].pct).map(([k,v])=>
+      comparisonBar(PROG_INFO[k]?PROG_INFO[k].label:k, `${PROG_INFO[k]?PROG_INFO[k].full:''} • ${v.count} sec • ${v.strength} students`, v.pct, overallPct)).join('');
+
+    const reportYear = (dateKey.match(/\d{4}/g)||[]).slice(-1)[0];
+    const semG = groupSum(sections, s2=>s2.year);
+    document.getElementById('semBars').innerHTML = Object.entries(semG).sort((a,b)=>b[0]-a[0]).map(([yr,v])=>{
+      const semNum = reportYear ? (Number(reportYear)-Number(yr))*2+1 : null;
+      const label = semNum? `${semNum}${semNum==1?'st':semNum==3?'rd':'th'} Semester (${yr} Batch)` : `${yr} Batch`;
+      return comparisonBar(label, `${v.count} section(s) • ${v.strength} students`, v.pct, overallPct);
+    }).join('');
+
+    renderSecTable(document.getElementById('secSearch').value);
+
+    const perfect = sections.filter(x=>x.pct>=99.9);
+    const worst = sections.slice().sort((a,b)=>a.pct-b.pct).slice(0,3);
+    let callHtml = '';
+    callHtml += `<div class="callout good">🏆 <b>${perfect.length}</b> section(s) at 100% attendance today.</div>`;
+    if(worst.length) callHtml += `<div class="callout bad">⚠️ Lowest attendance: ${worst.map(w=>`<b>${w.batch}</b> (${fmt(w.pct)}%)`).join(', ')}.</div>`;
+    if(missingStrength.length) callHtml += `<div class="callout">ℹ️ ${missingStrength.length} section(s) have absentees today but no strength set (${missingStrength.slice(0,6).join(', ')}${missingStrength.length>6?'…':''}) — % not shown. Add them, or use Auto-fill, in Section Strength Setup.</div>`;
+    document.getElementById('callouts').innerHTML = callHtml;
+  } else {
+    document.getElementById('ugpgBars').innerHTML = document.getElementById('progBars').innerHTML = document.getElementById('semBars').innerHTML = '<div class="desc">Set up section strengths to unlock this comparison.</div>';
+    LAST_RAW_SEC = s.secCount;
+    renderSecTableRaw(document.getElementById('secSearch').value);
+    document.getElementById('callouts').innerHTML = `<div class="callout">ℹ️ Set up section strengths (or click Auto-fill) to unlock attendance %, UG/PG, programme and semester comparisons, and 100%-attendance highlights.</div>`;
+  }
+
+  renderHourSection(s);
+  renderTrend(Object.keys(STORE).sort());
+  renderRepeatWatchlist();
+}
+
+function buildPrintReport(dateKey){
+  const day = STORE[dateKey];
+  if(!day || !day.summary) return '<p style="padding:20px">No data to report.</p>';
+  const s = day.summary;
+  const sections = computeAttendance(day).slice().sort((a,b)=>a.pct-b.pct);
+  const overall = sections.reduce((a,x)=>({strength:a.strength+x.strength,present:a.present+x.present,absent:a.absent+x.absent}),{strength:0,present:0,absent:0});
+  const overallPct = overall.strength? overall.present/overall.strength*100 : null;
+  const worst = sections.slice(0,6);
+  const critical = sections.filter(x=>x.pct<75).length;
+
+  // Day-over-day trend: compare against the most recent uploaded day before this one.
+  const allDates = Object.keys(STORE).sort();
+  const idx = allDates.indexOf(dateKey);
+  const prevKey = idx>0 ? allDates[idx-1] : null;
+  let deltaTotal = null, deltaPct = null;
+  if(prevKey){
+    const prevDay = STORE[prevKey];
+    deltaTotal = s.total - prevDay.summary.total;
+    const prevSections = computeAttendance(prevDay);
+    if(prevSections.length && overall.strength){
+      const po = prevSections.reduce((a,x)=>({s:a.s+x.strength,p:a.p+x.present}),{s:0,p:0});
+      const prevPct = po.s? po.p/po.s*100 : null;
+      if(prevPct!=null) deltaPct = overallPct - prevPct;
+    }
+  }
+  const deltaHtml = (val, higherIsBetter, suffix)=>{
+    if(val==null) return '';
+    const good = higherIsBetter ? val<=0 : val>=0;
+    const sign = val>0? '+' : '';
+    return `<div class="d ${good?'up':'down'}">${sign}${fmt(val)}${suffix} vs ${prevKey}</div>`;
+  };
+
+  const freq = {};
+  (day.absentees||[]).forEach(a=>{ const roll=a[0],name=a[1]; if(!freq[roll]) freq[roll]={name,roll,count:0}; freq[roll].count++; });
+  Object.values(STORE).forEach(d=>{ if(d.date===dateKey) return; (d.absentees||[]).forEach(a=>{ if(freq[a[0]]) freq[a[0]].count++; }); });
+  const repeats = Object.values(freq).filter(x=>x.count>1).sort((a,b)=>b.count-a.count).slice(0,5);
+
+  const kpiHtml = `
+    <div class="prKpi"><div class="v">${s.total}</div><div class="l">Absentee records</div>${deltaHtml(deltaTotal,false,'')}</div>
+    <div class="prKpi"><div class="v">${overall.strength? fmt(overallPct)+'%':'—'}</div><div class="l">Overall attendance</div>${deltaHtml(deltaPct,true,'%')}</div>
+    <div class="prKpi"><div class="v">${s.fullDay}</div><div class="l">Full-day absent</div></div>
+    <div class="prKpi"><div class="v">${s.partial}</div><div class="l">Partial / hour-wise</div></div>
+    <div class="prKpi"><div class="v">${critical}</div><div class="l">Critical sections (&lt;75%)</div></div>
+    <div class="prKpi"><div class="v">${sections.length}</div><div class="l">Sections tracked</div></div>`;
+
+  const donut = overall.strength? donutSVG(overall.present, overall.absent, fmt(overallPct)) : '<div style="font-size:9px;color:#777">Set section strengths in the dashboard to see % attendance.</div>';
+  const totalAbs = s.total||1, fdPct = Math.round(s.fullDay/totalAbs*100), ptPct = 100-fdPct;
+  const splitBar = `<div class="prSplitBar"><div style="width:${fdPct}%;background:#b3261e;"></div><div style="width:${ptPct}%;background:#a85c00;"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:7.5px;color:#555;margin-top:2px;"><span>Full-day ${fdPct}%</span><span>Partial ${ptPct}%</span></div>`;
+  const hourChart = hourBarChart(s.hourCount, s.periodsPerDay);
+
+  const worst4 = sections.slice(0,4);
+  const secRows = worst4.length ? worst4.map(x=>`<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`).join('')
+    : Object.entries(s.secCount).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([b,c])=>`<tr><td>${b}</td><td>—</td><td>${c}</td><td>—</td></tr>`).join('');
+  const repRows = repeats.slice(0,4).length ? repeats.slice(0,4).map(x=>`<tr><td>${x.roll}</td><td>${x.name}</td><td><b>${x.count}</b></td></tr>`).join('') : '<tr><td colspan="3" style="color:#999">None yet.</td></tr>';
+
+  const progG = groupSum(sections, s2=>s2.program);
+  const progRows = Object.entries(progG).sort((a,b)=>a[1].pct-b[1].pct).slice(0,4).map(([k,v])=>
+    `<tr><td>${PROG_INFO[k]?PROG_INFO[k].label:k}</td><td>${v.count}</td><td><b>${fmt(v.pct)}%</b></td></tr>`).join('') || '<tr><td colspan="3" style="color:#999">Set section strengths to see this.</td></tr>';
+
+  // Year-of-study breakdown: 1st/2nd/3rd year etc., derived from each section's admission
+  // year vs. this report's year (same logic the dashboard uses for its semester view).
+  const reportYear = (dateKey.match(/\d{4}/g)||[]).slice(-1)[0];
+  const yearLabelFor = admYear => {
+    if(!reportYear || !admYear) return admYear || '—';
+    const yr = Number(reportYear) - Number(admYear) + 1;
+    return (yr>=1 && yr<=6) ? `Year ${yr}` : `${admYear} batch`;
+  };
+  const yearG = groupSum(sections, s2=>s2.year);
+  const yearEntries = Object.entries(yearG)
+    .map(([yr,v])=>({yr, label:yearLabelFor(yr), pct:v.pct, count:v.count}))
+    .sort((a,b)=>Number(b.yr)-Number(a.yr)); // higher admission year = lower year-of-study
+  const yearChart = yearEntries.length
+    ? genericBarChart(yearEntries.map(e=>e.label), yearEntries.map(e=>fmt(e.pct)), {suffix:'%', max:100})
+    : '<div style="font-size:9px;color:#777">Set section strengths to see year-wise attendance.</div>';
+  let yearSecRows = '';
+  yearEntries.forEach(e=>{
+    const secs = sections.filter(x=>x.year===e.yr).sort((a,b)=>a.pct-b.pct).slice(0,3);
+    secs.forEach((x,i)=>{ yearSecRows += `<tr><td>${i===0?e.label:''}</td><td>${x.batch}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  });
+  if(!yearSecRows) yearSecRows = '<tr><td colspan="4" style="color:#999">Set section strengths to see this breakdown.</td></tr>';
+
+  // Full appendix: every section's strength/present/absent/attendance%, grouped by year of study.
+  let appendixRows = '';
+  yearEntries.forEach(e=>{
+    const secs = sections.filter(x=>x.year===e.yr).sort((a,b)=>a.pct-b.pct);
+    if(!secs.length) return;
+    appendixRows += `<tr class="yrHead"><td colspan="5">${e.label} (${e.yr} batch) — ${secs.length} section(s), avg ${fmt(e.pct)}%</td></tr>`;
+    secs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  });
+  const noYearSecs = sections.filter(x=>!x.year).sort((a,b)=>a.pct-b.pct);
+  if(noYearSecs.length){
+    appendixRows += `<tr class="yrHead"><td colspan="5">Other / Unclassified — ${noYearSecs.length} section(s)</td></tr>`;
+    noYearSecs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  }
+  if(!appendixRows) appendixRows = '<tr><td colspan="5" style="color:#999">Set section strengths in the dashboard to see full section-wise detail.</td></tr>';
+
+  const perfect = sections.filter(x=>x.pct>=99.9).length;
+  const trendLine = deltaPct!=null ? `<div>${deltaPct>=0?'📈':'📉'} Attendance ${deltaPct>=0?'improved':'dropped'} by ${Math.abs(fmt(deltaPct))} points vs ${prevKey}.</div>` : '';
+  const callouts = `<div class="prCallouts">
+    <div>🏆 ${perfect} section(s) at 100% attendance.</div>
+    ${worst.length?`<div>⚠️ Lowest: ${worst.slice(0,3).map(w=>`${w.batch} (${fmt(w.pct)}%)`).join(', ')}.</div>`:''}
+    ${critical>0?`<div>🔴 ${critical} section(s) below the 75% attendance threshold — needs follow-up.</div>`:''}
+    ${trendLine}
+  </div>`;
+
+  return `
+    <div class="prTitleRow"><div style="font-size:11px;font-weight:700;color:#162e4d;">Attendance Report — ${dateKey}</div><div class="prMeta">Generated ${new Date().toLocaleString()}</div></div>
+    <div class="prKpis">${kpiHtml}</div>
+    <div class="prRow">
+      <div class="prBox"><h4>Attendance Snapshot</h4><div style="display:flex;align-items:center;gap:10px;"><div>${donut.replace(/fill="#fff"/g,'fill="#1c3a5e"').replace(/stroke="#fff"/g,'stroke="#1c3a5e"').replace(/rgba\(255,255,255,\.25\)/g,'#e2e5ea').replace(/rgba\(255,255,255,\.8\)/g,'#5c6570')}</div><div style="font-size:8.5px;color:#555;flex:1;">Present: <b>${overall.present}</b><br>Absent: <b>${overall.absent}</b><br>Strength: <b>${overall.strength}</b>${splitBar}</div></div></div>
+      <div class="prBox"><h4>Hour-wise Absences</h4>${hourChart}</div>
+    </div>
+    <div class="prRow">
+      <div class="prBox"><h4>Year-wise Attendance</h4>${yearChart}</div>
+      <div class="prBox"><h4>Year-wise Section Detail (lowest 3 per year)</h4><table><thead><tr><th>Year</th><th>Section</th><th>Absent</th><th>Att.%</th></tr></thead><tbody>${yearSecRows}</tbody></table></div>
+    </div>
+    <div class="prRow3">
+      <div class="prBox"><h4>Lowest-Attendance Sections</h4><table><thead><tr><th>Section</th><th>Str.</th><th>Abs.</th><th>Att.%</th></tr></thead><tbody>${secRows}</tbody></table></div>
+      <div class="prBox"><h4>Programme Snapshot</h4><table><thead><tr><th>Prog.</th><th>Sec.</th><th>Att.%</th></tr></thead><tbody>${progRows}</tbody></table></div>
+      <div class="prBox"><h4>Repeat Absentees</h4><table><thead><tr><th>Roll</th><th>Name</th><th>Days</th></tr></thead><tbody>${repRows}</tbody></table></div>
+    </div>
+    ${callouts}
+    <div class="prFoot">Presidency University, Bengaluru · Daily Attendance Briefing · auto-generated</div>
+    <div class="prAppendix">
+      <div class="prAppendixTitle">Full Section-wise Attendance, Year-wise — ${dateKey}</div>
+      <table class="prAppendixTable"><thead><tr><th>Section</th><th>Strength</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead><tbody>${appendixRows}</tbody></table>
+      <div class="prFoot">Presidency University, Bengaluru · Daily Attendance Briefing · auto-generated</div>
+    </div>`;
+}
+
+function refreshDateSelect(selectDate){
+  const sel = document.getElementById('dateSelect');
+  const dates = Object.keys(STORE).sort().reverse();
+  sel.innerHTML = dates.length ? dates.map(d=>`<option value="${d}">${d} (${STORE[d].summary.total})</option>`).join('') : '<option>No data yet</option>';
+  if(selectDate) sel.value = selectDate;
+  renderStrengthTable();
+  if(dates.length) renderDay(sel.value); else { document.getElementById('empty').style.display='block'; document.getElementById('dash').style.display='none'; }
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const files = Array.from(e.target.files||[]); if(!files.length) return;
+  const status = document.getElementById('status'); status.textContent = `Parsing ${files.length} file(s)...`;
+  let done=0, lastDate=null, errors=[];
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = async function(ev){
+      try{
+        const parsed = parseWorkbook(ev.target.result, file.name);
+        const summary = summarize(parsed.records);
+        const absentees = parsed.records.filter(r=>r.hours).map(r=>[r.roll,r.name,r.batch,r.hours]);
+        const dayDoc = { date: parsed.date, summary, absentees };
+        await saveDay(dayDoc);
+        lastDate = parsed.date;
+      }catch(err){ errors.push(file.name+': '+err.message); }
+      done++;
+      if(done===files.length){
+        if(!cloudMode) refreshDateSelect(lastDate);
+        status.textContent = errors.length ? `Loaded with issues — ${errors.join(' | ')}` : `Loaded ${files.length} file(s). Latest: ${lastDate}`;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+});
+document.getElementById('dateSelect').addEventListener('change', function(){ renderDay(this.value); });
+document.getElementById('printBtn').addEventListener('click', function(){
+  document.getElementById('strengthPanel').open = false;
+  const dateKey = document.getElementById('dateSelect').value;
+  document.getElementById('printReport').innerHTML = buildPrintReport(dateKey);
+  window.print();
+});
+document.getElementById('secSearch').addEventListener('input', function(){ if(LAST_RAW_SEC) renderSecTableRaw(this.value); else renderSecTable(this.value); });
+document.getElementById('clearBtn').addEventListener('click', async function(){
+  const msg = cloudMode ? 'Clear all shared reports for EVERYONE using this dashboard? (Section strengths are kept)' : 'Clear all uploaded reports from this browser? (Section strengths are kept)';
+  if(confirm(msg)){
+    await deleteAllDays();
+    if(!cloudMode){ refreshDateSelect(); }
+    document.getElementById('status').textContent = 'Cleared.';
+  }
+});
+document.getElementById('saveStrength').addEventListener('click', async function(){
+  document.querySelectorAll('#strengthTable input').forEach(inp=>{
+    const b = inp.dataset.batch, v = Number(inp.value);
+    if(v>0) STRENGTH[b] = v; else delete STRENGTH[b];
+  });
+  await saveStrengthMap();
+  if(!cloudMode){ renderStrengthTable(); const dates = Object.keys(STORE).sort(); if(dates.length) renderDay(document.getElementById('dateSelect').value || dates[dates.length-1]); }
+  document.getElementById('status').textContent = 'Section strengths saved.';
+});
+document.getElementById('applyPaste').addEventListener('click', async function(){
+  const txt = document.getElementById('bulkPaste').value;
+  txt.split('\n').forEach(line=>{
+    const parts = line.split(/[,\t]/).map(p=>p.trim());
+    if(parts.length>=2 && parts[0] && !isNaN(Number(parts[1]))) STRENGTH[parts[0]] = Number(parts[1]);
+  });
+  await saveStrengthMap();
+  document.getElementById('bulkPaste').value='';
+  if(!cloudMode){ renderStrengthTable(); const dates = Object.keys(STORE).sort(); if(dates.length) renderDay(document.getElementById('dateSelect').value || dates[dates.length-1]); }
+});
+document.getElementById('autoFill').addEventListener('click', async function(){
+  // Best proxy for a section's true strength: the largest full-roster row count seen for
+  // that section across every uploaded day (a day where everyone's row was logged, present
+  // or absent). Small counts from single-hour elective splits won't overwrite a bigger one.
+  const maxSeen = {};
+  Object.values(STORE).forEach(day=>{
+    Object.entries((day.summary&&day.summary.secTotalRows)||{}).forEach(([sec,n])=>{ maxSeen[sec] = Math.max(maxSeen[sec]||0, n); });
+  });
+  let filled=0;
+  Object.entries(maxSeen).forEach(([sec,n])=>{ if(!(STRENGTH[sec]>0) && n>0){ STRENGTH[sec]=n; filled++; } });
+  await saveStrengthMap();
+  if(!cloudMode) renderStrengthTable();
+  document.getElementById('status').textContent = `Auto-fill suggested strengths for ${filled} section(s) — review, then click Save Strengths.`;
+});
+
+initCloud();
+</script>
+</body>
+</html>
