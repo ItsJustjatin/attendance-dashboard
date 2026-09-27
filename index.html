@@ -83,17 +83,44 @@ th{color:var(--sub);font-weight:700;position:sticky;top:0;background:var(--card)
 #empty{text-align:center;padding:70px 20px;color:var(--sub);}
 #empty .bigicon{font-size:2.4rem;margin-bottom:10px;}
 #dash{display:none;}
+#printReport{display:none;}
 .strengthTable input{width:80px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);}
 footer{text-align:center;color:var(--sub);font-size:.75rem;padding:22px;}
 details summary{cursor:pointer;font-weight:700;font-size:.85rem;}
 .rowflex{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
 @media print{
-  header,.toolbar,.badge,footer,#empty,.no-print,details summary{display:none !important;}
+  header,.toolbar,.badge,footer,#empty,.no-print,details summary,#dash{display:none !important;}
   details{display:block !important;}
   body{background:#fff;color:#000;}
-  .card,.hero{border:1px solid #ccc;box-shadow:none;break-inside:avoid;}
-  .hero{background:var(--brand2) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;color:#fff;}
-  .grid{grid-template-columns:1fr 1fr;}
+  @page{size:A4;margin:10mm;}
+  #printReport{display:block;}
+  #printReport *{box-sizing:border-box;}
+  #printReport{font-size:9px;color:#141c26;}
+  #printReport .prTitleRow{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;}
+  #printReport .prMeta{font-size:8px;color:#555;text-align:right;}
+  #printReport .prKpis{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:6px;}
+  #printReport .prKpi{border:1px solid #ccc;border-radius:5px;padding:4px 5px;text-align:center;}
+  #printReport .prKpi .v{font-family:var(--serif);font-size:13px;font-weight:700;color:#162e4d;}
+  #printReport .prKpi .l{font-size:6.5px;color:#555;}
+  #printReport .prKpi .d{font-size:6.5px;font-weight:700;}
+  #printReport .prKpi .d.up{color:#1f7a4d;} #printReport .prKpi .d.down{color:#b3261e;}
+  #printReport .prRow{display:grid;grid-template-columns:1.05fr 1fr;gap:8px;margin-bottom:6px;}
+  #printReport .prRow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:6px;}
+  #printReport .prSplitBar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:4px;background:#eee;}
+  #printReport .prSplitBar div{height:100%;}
+  #printReport .prBox{border:1px solid #ccc;border-radius:6px;padding:5px 7px;}
+  #printReport .prBox h4{margin:0 0 3px;font-size:9px;color:#162e4d;border-bottom:1px solid #ddd;padding-bottom:2px;}
+  #printReport table{width:100%;border-collapse:collapse;font-size:8px;}
+  #printReport th,#printReport td{padding:1.5px 4px;border-bottom:1px solid #e5e5e5;text-align:left;white-space:nowrap;}
+  #printReport th{color:#555;font-weight:700;}
+  #printReport .prCallouts div{font-size:8px;margin-bottom:2px;padding:2px 6px;border-left:2px solid #162e4d;background:#f4f6f8;}
+  #printReport .prFoot{margin-top:4px;font-size:7px;color:#777;text-align:center;}
+  #printReport .prAppendix{page-break-before:always;padding-top:6px;}
+  #printReport .prAppendixTitle{font-size:11px;font-weight:700;color:#162e4d;margin-bottom:6px;border-bottom:2px solid #162e4d;padding-bottom:4px;}
+  #printReport .prAppendixTable{width:100%;border-collapse:collapse;font-size:9px;}
+  #printReport .prAppendixTable th,#printReport .prAppendixTable td{padding:3px 6px;border-bottom:1px solid #e5e5e5;text-align:left;}
+  #printReport .prAppendixTable tr{page-break-inside:avoid;}
+  #printReport .prAppendixTable tr.yrHead td{background:#eef1f6;color:#162e4d;font-weight:700;padding-top:8px;border-bottom:1px solid #162e4d;}
 }
 </style>
 </head>
@@ -113,6 +140,7 @@ details summary{cursor:pointer;font-weight:700;font-size:.85rem;}
   <svg class="logo-mark" viewBox="0 0 23.424999 21.822001"><use href="#puCrest"></use></svg>
   <div class="titleblock"><div class="instname">Presidency University, Bengaluru</div><h1>Daily Attendance Briefing</h1></div>
 </div>
+<div id="printReport"></div>
 <div class="wrap">
   <div class="no-print"><span class="badge local" id="syncBadge">Checking sync status…</span></div>
   <div class="toolbar no-print">
@@ -424,6 +452,22 @@ function donutSVG(present, absent, pctLabel){
   </svg>`;
 }
 
+function genericBarChart(labels, values, opts){
+  opts = opts||{};
+  const max = opts.max || Math.max(1,...values);
+  const n = labels.length || 1;
+  const w = Math.max(180, n*58), h=76, bw=Math.min(36,(w/n)-12);
+  let bars='';
+  values.forEach((v,i)=>{
+    const x = i*(w/n) + ((w/n)-bw)/2;
+    const bh = max? Math.max(0,(v/max)*48) : 0;
+    bars += `<rect x="${x}" y="${58-bh}" width="${bw}" height="${bh}" rx="3" fill="var(--brand)"></rect>
+      <text x="${x+bw/2}" y="${58-bh-4}" text-anchor="middle" font-size="8" fill="#141c26">${v}${opts.suffix||''}</text>
+      <text x="${x+bw/2}" y="70" text-anchor="middle" font-size="7" fill="#5c6570">${labels[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} 76" style="width:100%;max-width:${w}px;height:76px;"><line x1="0" y1="58" x2="${w}" y2="58" stroke="#ddd"/>${bars}</svg>`;
+}
+
 function hourBarChart(hourCount, periods){
   const vals = []; for(let i=1;i<=periods;i++) vals.push(hourCount[i]||0);
   const max = Math.max(1,...vals);
@@ -581,6 +625,137 @@ function renderDay(dateKey){
   renderRepeatWatchlist();
 }
 
+function buildPrintReport(dateKey){
+  const day = STORE[dateKey];
+  if(!day || !day.summary) return '<p style="padding:20px">No data to report.</p>';
+  const s = day.summary;
+  const sections = computeAttendance(day).slice().sort((a,b)=>a.pct-b.pct);
+  const overall = sections.reduce((a,x)=>({strength:a.strength+x.strength,present:a.present+x.present,absent:a.absent+x.absent}),{strength:0,present:0,absent:0});
+  const overallPct = overall.strength? overall.present/overall.strength*100 : null;
+  const worst = sections.slice(0,6);
+  const critical = sections.filter(x=>x.pct<75).length;
+
+  // Day-over-day trend: compare against the most recent uploaded day before this one.
+  const allDates = Object.keys(STORE).sort();
+  const idx = allDates.indexOf(dateKey);
+  const prevKey = idx>0 ? allDates[idx-1] : null;
+  let deltaTotal = null, deltaPct = null;
+  if(prevKey){
+    const prevDay = STORE[prevKey];
+    deltaTotal = s.total - prevDay.summary.total;
+    const prevSections = computeAttendance(prevDay);
+    if(prevSections.length && overall.strength){
+      const po = prevSections.reduce((a,x)=>({s:a.s+x.strength,p:a.p+x.present}),{s:0,p:0});
+      const prevPct = po.s? po.p/po.s*100 : null;
+      if(prevPct!=null) deltaPct = overallPct - prevPct;
+    }
+  }
+  const deltaHtml = (val, higherIsBetter, suffix)=>{
+    if(val==null) return '';
+    const good = higherIsBetter ? val<=0 : val>=0;
+    const sign = val>0? '+' : '';
+    return `<div class="d ${good?'up':'down'}">${sign}${fmt(val)}${suffix} vs ${prevKey}</div>`;
+  };
+
+  const freq = {};
+  (day.absentees||[]).forEach(a=>{ const roll=a[0],name=a[1]; if(!freq[roll]) freq[roll]={name,roll,count:0}; freq[roll].count++; });
+  Object.values(STORE).forEach(d=>{ if(d.date===dateKey) return; (d.absentees||[]).forEach(a=>{ if(freq[a[0]]) freq[a[0]].count++; }); });
+  const repeats = Object.values(freq).filter(x=>x.count>1).sort((a,b)=>b.count-a.count).slice(0,5);
+
+  const kpiHtml = `
+    <div class="prKpi"><div class="v">${s.total}</div><div class="l">Absentee records</div>${deltaHtml(deltaTotal,false,'')}</div>
+    <div class="prKpi"><div class="v">${overall.strength? fmt(overallPct)+'%':'—'}</div><div class="l">Overall attendance</div>${deltaHtml(deltaPct,true,'%')}</div>
+    <div class="prKpi"><div class="v">${s.fullDay}</div><div class="l">Full-day absent</div></div>
+    <div class="prKpi"><div class="v">${s.partial}</div><div class="l">Partial / hour-wise</div></div>
+    <div class="prKpi"><div class="v">${critical}</div><div class="l">Critical sections (&lt;75%)</div></div>
+    <div class="prKpi"><div class="v">${sections.length}</div><div class="l">Sections tracked</div></div>`;
+
+  const donut = overall.strength? donutSVG(overall.present, overall.absent, fmt(overallPct)) : '<div style="font-size:9px;color:#777">Set section strengths in the dashboard to see % attendance.</div>';
+  const totalAbs = s.total||1, fdPct = Math.round(s.fullDay/totalAbs*100), ptPct = 100-fdPct;
+  const splitBar = `<div class="prSplitBar"><div style="width:${fdPct}%;background:#b3261e;"></div><div style="width:${ptPct}%;background:#a85c00;"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:7.5px;color:#555;margin-top:2px;"><span>Full-day ${fdPct}%</span><span>Partial ${ptPct}%</span></div>`;
+  const hourChart = hourBarChart(s.hourCount, s.periodsPerDay);
+
+  const worst4 = sections.slice(0,4);
+  const secRows = worst4.length ? worst4.map(x=>`<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`).join('')
+    : Object.entries(s.secCount).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([b,c])=>`<tr><td>${b}</td><td>—</td><td>${c}</td><td>—</td></tr>`).join('');
+  const repRows = repeats.slice(0,4).length ? repeats.slice(0,4).map(x=>`<tr><td>${x.roll}</td><td>${x.name}</td><td><b>${x.count}</b></td></tr>`).join('') : '<tr><td colspan="3" style="color:#999">None yet.</td></tr>';
+
+  const progG = groupSum(sections, s2=>s2.program);
+  const progRows = Object.entries(progG).sort((a,b)=>a[1].pct-b[1].pct).slice(0,4).map(([k,v])=>
+    `<tr><td>${PROG_INFO[k]?PROG_INFO[k].label:k}</td><td>${v.count}</td><td><b>${fmt(v.pct)}%</b></td></tr>`).join('') || '<tr><td colspan="3" style="color:#999">Set section strengths to see this.</td></tr>';
+
+  // Year-of-study breakdown: 1st/2nd/3rd year etc., derived from each section's admission
+  // year vs. this report's year (same logic the dashboard uses for its semester view).
+  const reportYear = (dateKey.match(/\d{4}/g)||[]).slice(-1)[0];
+  const yearLabelFor = admYear => {
+    if(!reportYear || !admYear) return admYear || '—';
+    const yr = Number(reportYear) - Number(admYear) + 1;
+    return (yr>=1 && yr<=6) ? `Year ${yr}` : `${admYear} batch`;
+  };
+  const yearG = groupSum(sections, s2=>s2.year);
+  const yearEntries = Object.entries(yearG)
+    .map(([yr,v])=>({yr, label:yearLabelFor(yr), pct:v.pct, count:v.count}))
+    .sort((a,b)=>Number(b.yr)-Number(a.yr)); // higher admission year = lower year-of-study
+  const yearChart = yearEntries.length
+    ? genericBarChart(yearEntries.map(e=>e.label), yearEntries.map(e=>fmt(e.pct)), {suffix:'%', max:100})
+    : '<div style="font-size:9px;color:#777">Set section strengths to see year-wise attendance.</div>';
+  let yearSecRows = '';
+  yearEntries.forEach(e=>{
+    const secs = sections.filter(x=>x.year===e.yr).sort((a,b)=>a.pct-b.pct).slice(0,3);
+    secs.forEach((x,i)=>{ yearSecRows += `<tr><td>${i===0?e.label:''}</td><td>${x.batch}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  });
+  if(!yearSecRows) yearSecRows = '<tr><td colspan="4" style="color:#999">Set section strengths to see this breakdown.</td></tr>';
+
+  // Full appendix: every section's strength/present/absent/attendance%, grouped by year of study.
+  let appendixRows = '';
+  yearEntries.forEach(e=>{
+    const secs = sections.filter(x=>x.year===e.yr).sort((a,b)=>a.pct-b.pct);
+    if(!secs.length) return;
+    appendixRows += `<tr class="yrHead"><td colspan="5">${e.label} (${e.yr} batch) — ${secs.length} section(s), avg ${fmt(e.pct)}%</td></tr>`;
+    secs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  });
+  const noYearSecs = sections.filter(x=>!x.year).sort((a,b)=>a.pct-b.pct);
+  if(noYearSecs.length){
+    appendixRows += `<tr class="yrHead"><td colspan="5">Other / Unclassified — ${noYearSecs.length} section(s)</td></tr>`;
+    noYearSecs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  }
+  if(!appendixRows) appendixRows = '<tr><td colspan="5" style="color:#999">Set section strengths in the dashboard to see full section-wise detail.</td></tr>';
+
+  const perfect = sections.filter(x=>x.pct>=99.9).length;
+  const trendLine = deltaPct!=null ? `<div>${deltaPct>=0?'📈':'📉'} Attendance ${deltaPct>=0?'improved':'dropped'} by ${Math.abs(fmt(deltaPct))} points vs ${prevKey}.</div>` : '';
+  const callouts = `<div class="prCallouts">
+    <div>🏆 ${perfect} section(s) at 100% attendance.</div>
+    ${worst.length?`<div>⚠️ Lowest: ${worst.slice(0,3).map(w=>`${w.batch} (${fmt(w.pct)}%)`).join(', ')}.</div>`:''}
+    ${critical>0?`<div>🔴 ${critical} section(s) below the 75% attendance threshold — needs follow-up.</div>`:''}
+    ${trendLine}
+  </div>`;
+
+  return `
+    <div class="prTitleRow"><div style="font-size:11px;font-weight:700;color:#162e4d;">Attendance Report — ${dateKey}</div><div class="prMeta">Generated ${new Date().toLocaleString()}</div></div>
+    <div class="prKpis">${kpiHtml}</div>
+    <div class="prRow">
+      <div class="prBox"><h4>Attendance Snapshot</h4><div style="display:flex;align-items:center;gap:10px;"><div>${donut.replace(/fill="#fff"/g,'fill="#1c3a5e"').replace(/stroke="#fff"/g,'stroke="#1c3a5e"').replace(/rgba\(255,255,255,\.25\)/g,'#e2e5ea').replace(/rgba\(255,255,255,\.8\)/g,'#5c6570')}</div><div style="font-size:8.5px;color:#555;flex:1;">Present: <b>${overall.present}</b><br>Absent: <b>${overall.absent}</b><br>Strength: <b>${overall.strength}</b>${splitBar}</div></div></div>
+      <div class="prBox"><h4>Hour-wise Absences</h4>${hourChart}</div>
+    </div>
+    <div class="prRow">
+      <div class="prBox"><h4>Year-wise Attendance</h4>${yearChart}</div>
+      <div class="prBox"><h4>Year-wise Section Detail (lowest 3 per year)</h4><table><thead><tr><th>Year</th><th>Section</th><th>Absent</th><th>Att.%</th></tr></thead><tbody>${yearSecRows}</tbody></table></div>
+    </div>
+    <div class="prRow3">
+      <div class="prBox"><h4>Lowest-Attendance Sections</h4><table><thead><tr><th>Section</th><th>Str.</th><th>Abs.</th><th>Att.%</th></tr></thead><tbody>${secRows}</tbody></table></div>
+      <div class="prBox"><h4>Programme Snapshot</h4><table><thead><tr><th>Prog.</th><th>Sec.</th><th>Att.%</th></tr></thead><tbody>${progRows}</tbody></table></div>
+      <div class="prBox"><h4>Repeat Absentees</h4><table><thead><tr><th>Roll</th><th>Name</th><th>Days</th></tr></thead><tbody>${repRows}</tbody></table></div>
+    </div>
+    ${callouts}
+    <div class="prFoot">Presidency University, Bengaluru · Daily Attendance Briefing · auto-generated</div>
+    <div class="prAppendix">
+      <div class="prAppendixTitle">Full Section-wise Attendance, Year-wise — ${dateKey}</div>
+      <table class="prAppendixTable"><thead><tr><th>Section</th><th>Strength</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead><tbody>${appendixRows}</tbody></table>
+      <div class="prFoot">Presidency University, Bengaluru · Daily Attendance Briefing · auto-generated</div>
+    </div>`;
+}
+
 function refreshDateSelect(selectDate){
   const sel = document.getElementById('dateSelect');
   const dates = Object.keys(STORE).sort().reverse();
@@ -615,7 +790,12 @@ document.getElementById('fileInput').addEventListener('change', function(e){
   });
 });
 document.getElementById('dateSelect').addEventListener('change', function(){ renderDay(this.value); });
-document.getElementById('printBtn').addEventListener('click', function(){ document.getElementById('strengthPanel').open = false; window.print(); });
+document.getElementById('printBtn').addEventListener('click', function(){
+  document.getElementById('strengthPanel').open = false;
+  const dateKey = document.getElementById('dateSelect').value;
+  document.getElementById('printReport').innerHTML = buildPrintReport(dateKey);
+  window.print();
+});
 document.getElementById('secSearch').addEventListener('input', function(){ if(LAST_RAW_SEC) renderSecTableRaw(this.value); else renderSecTable(this.value); });
 document.getElementById('clearBtn').addEventListener('click', async function(){
   const msg = cloudMode ? 'Clear all shared reports for EVERYONE using this dashboard? (Section strengths are kept)' : 'Clear all uploaded reports from this browser? (Section strengths are kept)';
