@@ -120,7 +120,10 @@ details summary{cursor:pointer;font-weight:700;font-size:.85rem;}
   #printReport .prAppendixTable{width:100%;border-collapse:collapse;font-size:9px;}
   #printReport .prAppendixTable th,#printReport .prAppendixTable td{padding:3px 6px;border-bottom:1px solid #e5e5e5;text-align:left;}
   #printReport .prAppendixTable tr{page-break-inside:avoid;}
-  #printReport .prAppendixTable tr.yrHead td{background:#eef1f6;color:#162e4d;font-weight:700;padding-top:8px;border-bottom:1px solid #162e4d;}
+  #printReport .prAppendixTable tr.grpTitle td{font-size:10px;font-weight:800;color:#162e4d;padding-top:10px;border-bottom:none;}
+  #printReport .prAppendixTable tr.colSub td{font-weight:700;color:#555;background:#eef1f6;border-bottom:1px solid #162e4d;}
+  #printReport .prAppendixTable tr.gtRow td{font-weight:800;border-top:1px solid #162e4d;border-bottom:2px solid #162e4d;}
+  #printReport .prAppendixTable tr.spacer td{border:none;padding:4px 0;}
 }
 </style>
 </head>
@@ -707,19 +710,32 @@ function buildPrintReport(dateKey){
   });
   if(!yearSecRows) yearSecRows = '<tr><td colspan="4" style="color:#999">Set section strengths to see this breakdown.</td></tr>';
 
-  // Full appendix: every section's strength/present/absent/attendance%, grouped by year of study.
+  // Full appendix: every section's strength/present/absent/attendance%, grouped the way the
+  // university's own manual sheet groups them — PG (MCA/MDS) split into First/Second Year,
+  // UG (BCA and its variants) split into FIRST YEAR vs. everything else as HIGHER SEMESTERS —
+  // each group listed in section-code order with its own Grand Total row.
+  const ordinalWord = n => n===1?'First':n===2?'Second':n===3?'Third':n===4?'Fourth':n===5?'Fifth':n+'th';
+  const groupNameFor = sec => {
+    const yr = (reportYear && sec.year) ? (Number(reportYear)-Number(sec.year)+1) : null;
+    const isUG = PROG_INFO[sec.program] ? PROG_INFO[sec.program].ug : true;
+    if(!isUG) return yr===1 ? 'MCA First Year' : yr===2 ? 'MCA Second Year' : (yr ? `MCA ${ordinalWord(yr)} Year` : 'MCA / PG — Other');
+    return yr===1 ? 'BCA FIRST YEAR' : 'BCA HIGHER SEMESTERS';
+  };
+  const GROUP_ORDER = ['MCA First Year','MCA Second Year','BCA FIRST YEAR','BCA HIGHER SEMESTERS'];
+  const groupMap = {};
+  sections.forEach(x=>{ const g = groupNameFor(x); (groupMap[g]=groupMap[g]||[]).push(x); });
+  const orderedGroups = [...GROUP_ORDER.filter(g=>groupMap[g]), ...Object.keys(groupMap).filter(g=>!GROUP_ORDER.includes(g)).sort()];
   let appendixRows = '';
-  yearEntries.forEach(e=>{
-    const secs = sections.filter(x=>x.year===e.yr).sort((a,b)=>a.pct-b.pct);
-    if(!secs.length) return;
-    appendixRows += `<tr class="yrHead"><td colspan="5">${e.label} (${e.yr} batch) — ${secs.length} section(s), avg ${fmt(e.pct)}%</td></tr>`;
-    secs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
+  orderedGroups.forEach(gname=>{
+    const secs = groupMap[gname].slice().sort((a,b)=>a.batch.localeCompare(b.batch));
+    const tot = secs.reduce((a,x)=>({strength:a.strength+x.strength,present:a.present+x.present,absent:a.absent+x.absent}),{strength:0,present:0,absent:0});
+    const totPct = tot.strength ? Math.round(tot.present/tot.strength*100) : 0;
+    appendixRows += `<tr class="grpTitle"><td colspan="5">${gname}</td></tr>`;
+    appendixRows += `<tr class="colSub"><td>Section Name</td><td>Strength</td><td>No. of Present</td><td>No. of Absent</td><td>Percentage</td></tr>`;
+    secs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td>${Math.round(x.pct)}%</td></tr>`; });
+    appendixRows += `<tr class="gtRow"><td>Grand Total</td><td>${tot.strength}</td><td>${tot.present}</td><td>${tot.absent}</td><td>${totPct}%</td></tr>`;
+    appendixRows += `<tr class="spacer"><td colspan="5"></td></tr>`;
   });
-  const noYearSecs = sections.filter(x=>!x.year).sort((a,b)=>a.pct-b.pct);
-  if(noYearSecs.length){
-    appendixRows += `<tr class="yrHead"><td colspan="5">Other / Unclassified — ${noYearSecs.length} section(s)</td></tr>`;
-    noYearSecs.forEach(x=>{ appendixRows += `<tr><td>${x.batch}</td><td>${x.strength}</td><td>${x.present}</td><td>${x.absent}</td><td><b>${fmt(x.pct)}%</b></td></tr>`; });
-  }
   if(!appendixRows) appendixRows = '<tr><td colspan="5" style="color:#999">Set section strengths in the dashboard to see full section-wise detail.</td></tr>';
 
   const perfect = sections.filter(x=>x.pct>=99.9).length;
@@ -750,8 +766,8 @@ function buildPrintReport(dateKey){
     ${callouts}
     <div class="prFoot">Presidency University, Bengaluru · Daily Attendance Briefing · auto-generated</div>
     <div class="prAppendix">
-      <div class="prAppendixTitle">Full Section-wise Attendance, Year-wise — ${dateKey}</div>
-      <table class="prAppendixTable"><thead><tr><th>Section</th><th>Strength</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead><tbody>${appendixRows}</tbody></table>
+      <div class="prAppendixTitle">Date : ${dateKey}</div>
+      <table class="prAppendixTable"><tbody>${appendixRows}</tbody></table>
       <div class="prFoot">Presidency University, Bengaluru · Daily Attendance Briefing · auto-generated</div>
     </div>`;
 }
